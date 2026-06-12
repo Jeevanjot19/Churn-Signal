@@ -1,0 +1,8 @@
+Months_Inactive_12_mon,churn_rate,customer_count,small_sample
+0,0.517,29,True
+1,0.045,2233,False
+2,0.154,3282,False
+3,0.215,3846,False
+4,0.299,435,False
+5,0.18,178,False
+6,0.153,124,False
