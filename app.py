@@ -14,7 +14,8 @@ from src.model     import (train_and_evaluate, load_model,
 from src.findings  import get_all_findings
 from src.segmenter import (assign_tiers, build_tier_profiles,
                             CRITICAL, WATCH, STABLE)
-from src.briefing  import generate_briefing, get_action
+from src.briefing  import (generate_briefing, get_action,
+                            get_driver_display_name)
 from config        import MODEL_PATH, WEEK_LABEL, PREV_WEEK_LABEL
 
 st.set_page_config(
@@ -22,6 +23,18 @@ st.set_page_config(
 st.title("📊 ChurnSignal")
 st.caption("Credit Card Churn Classifier · "
            "Behavioral Findings · Auto Briefing")
+
+st.markdown("""
+## What is ChurnSignal?
+Credit card companies lose millions when customers quietly stop using
+their card. ChurnSignal identifies which customers are at risk - and
+more importantly, *why* they're pulling back - so the retention team
+knows exactly what to do.
+
+**Dataset:** 10,127 real credit card customers (BankChurners)<br>
+**Model:** XGBoost · AUC 0.991 · Threshold found experimentally<br>
+**Key finding:** Every customer who contacted the bank 6 times churned.
+""")
 
 with st.sidebar:
     run = st.button("▶ Run Pipeline",
@@ -43,12 +56,12 @@ if run:
     with st.spinner("Loading model..."):
         if os.path.exists(MODEL_PATH):
             model, threshold = load_model()
-            metrics = {"auc": 0.9912, "precision": 0.950,
-                       "recall": 0.874, "f1": 0.910,
-                       "threshold": 0.678}
+            metrics = {"auc": 0.9914, "precision": 0.9529,
+                       "recall": 0.8708, "f1": 0.910,
+                       "threshold": round(threshold, 3)}
         else:
             with st.spinner("Training model (first run)..."):
-                model, threshold, metrics = train_and_evaluate(
+                model, threshold, metrics, _ = train_and_evaluate(
                     df_enc, feat_cols)
 
         st.sidebar.markdown("---")
@@ -151,11 +164,13 @@ if run:
             hole=0.4)
         st.plotly_chart(fig1, use_container_width=True)
 
+    with col2:
         # SHAP bar
         st.subheader("Top SHAP Drivers — Critical")
         mask_c = (curr_tiered["risk_tier"]==CRITICAL).values
         mean_abs = np.abs(shap_curr[mask_c]).mean(axis=0)
-        df_imp = (pd.DataFrame({"Feature": feat_cols,
+        df_imp = (pd.DataFrame({"Feature": [get_driver_display_name(c)
+                                             for c in feat_cols],
                                  "Importance": mean_abs})
                   .sort_values("Importance").tail(8))
         fig2 = px.bar(df_imp, x="Importance", y="Feature",
@@ -164,36 +179,82 @@ if run:
         fig2.update_layout(showlegend=False)
         st.plotly_chart(fig2, use_container_width=True)
 
-    with col2:
-        # Finding 1 — contacts
-        st.subheader("★ Contacts Distress Curve")
-        st.caption("More calls ≠ more loyalty. "
-                   "6 contacts = 100% churn.")
-        fig3 = px.line(
+    st.markdown("---")
+    st.markdown("## What the Data Actually Shows")
+    st.markdown(
+        "Four patterns that genuinely surprised us - "
+        "and directly change how a retention team operates."
+    )
+
+    find_col1, find_col2 = st.columns(2)
+
+    with find_col1:
+        st.subheader("Contacts Distress Curve")
+        fig_contacts = px.line(
             findings["contacts"],
             x="Contacts_Count_12_mon", y="churn_rate",
             markers=True,
             labels={"Contacts_Count_12_mon":"Contacts",
                     "churn_rate":"Churn Rate"},
             color_discrete_sequence=["#ef4444"])
-        fig3.update_layout(yaxis_tickformat=".0%")
-        st.plotly_chart(fig3, use_container_width=True)
+        fig_contacts.update_layout(yaxis_tickformat=".0%")
+        st.plotly_chart(fig_contacts, use_container_width=True)
+        st.markdown(
+            "**Business implication:** Six contacts is not loyalty - it is "
+            "a distress signal for immediate relationship manager review."
+        )
 
-        # Finding 2 — balance
-        st.subheader("★ Zero Balance Risk")
+        st.subheader("Transaction Frequency Shield")
+        fig_tx = px.bar(
+            findings["tx_shield"],
+            x="min_transactions", y="churn_rate",
+            color="churn_rate",
+            color_continuous_scale="RdYlGn_r",
+            labels={"min_transactions":"Min Transactions",
+                    "churn_rate":"Churn Rate"})
+        fig_tx.update_layout(yaxis_tickformat=".0%")
+        st.plotly_chart(fig_tx, use_container_width=True)
+        st.markdown(
+            "**Business implication:** Build card habit early; customers "
+            "with 100+ yearly transactions had 0% historical churn."
+        )
+
+    with find_col2:
+        st.subheader("Zero Balance Risk")
         bal = findings["balance"]
-        st.caption(
-            f"Zero balance: {bal['zero_churn_rate']:.1%} churn vs "
-            f"{bal['nonzero_churn_rate']:.1%}. Ratio: {bal['ratio']}x.")
-        fig4 = px.bar(
+        fig_balance = px.bar(
             x=["Zero Balance","Non-Zero Balance"],
             y=[bal["zero_churn_rate"], bal["nonzero_churn_rate"]],
             color=["Zero Balance","Non-Zero Balance"],
             color_discrete_map={"Zero Balance":"#ef4444",
                                  "Non-Zero Balance":"#22c55e"},
             labels={"x":"Balance Status","y":"Churn Rate"})
-        fig4.update_layout(yaxis_tickformat=".0%", showlegend=False)
-        st.plotly_chart(fig4, use_container_width=True)
+        fig_balance.update_layout(yaxis_tickformat=".0%", showlegend=False)
+        st.plotly_chart(fig_balance, use_container_width=True)
+        st.markdown(
+            f"**Business implication:** Zero-balance customers churn at "
+            f"{bal['ratio']}x the non-zero-balance rate, so full-payers "
+            "need retention attention too."
+        )
+
+        st.subheader("Inactivity Acceleration")
+        inact = findings["inactivity"]
+        inact_plot = inact[
+            (inact["Months_Inactive_12_mon"] > 0) &
+            (inact["Months_Inactive_12_mon"] <= 6)]
+        fig_inactivity = px.line(
+            inact_plot,
+            x="Months_Inactive_12_mon", y="churn_rate",
+            markers=True,
+            labels={"Months_Inactive_12_mon":"Months Inactive",
+                    "churn_rate":"Churn Rate"},
+            color_discrete_sequence=["#f59e0b"])
+        fig_inactivity.update_layout(yaxis_tickformat=".0%")
+        st.plotly_chart(fig_inactivity, use_container_width=True)
+        st.markdown(
+            "**Business implication:** Intervene before inactivity reaches "
+            "month 4, when churn risk is roughly 7x higher than at month 1."
+        )
 
     st.markdown("---")
     st.subheader("SHAP Analysis")
@@ -213,7 +274,8 @@ if run:
             tier_mean_abs = np.abs(tier_shap).mean(axis=0)
             tier_shap_df = (
                 pd.DataFrame({
-                    "Feature": feat_cols,
+                    "Feature": [get_driver_display_name(c)
+                                for c in feat_cols],
                     "Mean Absolute SHAP": tier_mean_abs
                 })
                 .sort_values("Mean Absolute SHAP", ascending=False)
@@ -261,7 +323,7 @@ if run:
         customer_shap = shap_curr[selected_pos]
         customer_shap_df = (
             pd.DataFrame({
-                "Feature": feat_cols,
+                "Feature": [get_driver_display_name(c) for c in feat_cols],
                 "SHAP Value": customer_shap,
                 "Abs SHAP": np.abs(customer_shap),
                 "Customer Value": curr_wk.iloc[selected_pos][feat_cols].values
@@ -274,7 +336,8 @@ if run:
         s1, s2, s3 = st.columns(3)
         s1.metric("Risk Tier", customer_row["risk_tier"])
         s2.metric("Churn Probability", f"{customer_row['churn_probability']:.1%}")
-        s3.metric("Top Driver", customer_row["top_driver"])
+        s3.metric("Top Driver",
+                  get_driver_display_name(customer_row["top_driver"]))
 
         fig_customer_shap = px.bar(
             customer_shap_df,
@@ -298,42 +361,6 @@ if run:
         )[["Feature", "Customer Value", "SHAP Value"]]
         st.dataframe(driver_table, use_container_width=True, hide_index=True)
 
-    col3, col4 = st.columns(2)
-
-    with col3:
-        # Finding 3 — tx shield
-        st.subheader("★ Transaction Frequency Shield")
-        st.caption("100+ transactions per year: 0% churn.")
-        fig5 = px.bar(
-            findings["tx_shield"],
-            x="min_transactions", y="churn_rate",
-            color="churn_rate",
-            color_continuous_scale="RdYlGn_r",
-            labels={"min_transactions":"Min Transactions",
-                    "churn_rate":"Churn Rate"})
-        fig5.update_layout(yaxis_tickformat=".0%")
-        st.plotly_chart(fig5, use_container_width=True)
-
-    with col4:
-        # Finding 4 — inactivity
-        st.subheader("★ Inactivity Acceleration")
-        st.caption(
-            "Churn risk at 4 months is 7x higher than at 1 month.")
-        inact = findings["inactivity"]
-        # Exclude 0-month bucket (n=29, too small)
-        inact_plot = inact[
-            (inact["Months_Inactive_12_mon"] > 0) &
-            (inact["Months_Inactive_12_mon"] <= 6)]
-        fig6 = px.line(
-            inact_plot,
-            x="Months_Inactive_12_mon", y="churn_rate",
-            markers=True,
-            labels={"Months_Inactive_12_mon":"Months Inactive",
-                    "churn_rate":"Churn Rate"},
-            color_discrete_sequence=["#f59e0b"])
-        fig6.update_layout(yaxis_tickformat=".0%")
-        st.plotly_chart(fig6, use_container_width=True)
-
     st.markdown("---")
     st.subheader("Customer Risk Table — Critical Tier")
 
@@ -348,5 +375,19 @@ if run:
         "Customer ID","Churn Prob","Top Driver",
         "Recommended Action","Contacts",
         "Revolving Balance","Transaction Count"]
-    st.dataframe(crit_table.head(50),
-                 use_container_width=True, hide_index=True)
+    crit_table["Churn Prob"] = crit_table["Churn Prob"].round(2)
+    crit_table["Top Driver"] = crit_table["Top Driver"].apply(
+        get_driver_display_name)
+    st.dataframe(
+        crit_table.head(50),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Churn Prob": st.column_config.ProgressColumn(
+                "Churn Probability",
+                min_value=0,
+                max_value=1,
+                format="%.2f",
+            ),
+        }
+    )

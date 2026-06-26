@@ -12,13 +12,13 @@ def main():
 
     Path(MODEL_PATH).parent.mkdir(parents=True, exist_ok=True)
 
-    model, threshold, metrics = train_and_evaluate(df_enc, feat_cols)
+    model, threshold, metrics, _ = train_and_evaluate(df_enc, feat_cols)
     print(metrics)
     # Expected output:
-    # auc       : ~0.9912
-    # threshold : ~0.678
-    # precision : ~0.950
-    # recall    : ~0.874
+    # auc       : ~0.9914
+    # threshold : ~0.687
+    # precision : ~0.953
+    # recall    : ~0.871
     # f1        : ~0.910
     assert metrics["auc"] > 0.97
     assert 0.65 <= metrics["threshold"] <= 0.72

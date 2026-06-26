@@ -34,12 +34,8 @@ def train_and_evaluate(df_encoded, feature_cols):
     X = df_encoded[feature_cols]
     y = df_encoded["Churned"]
 
-    # Stratified 80/20 split
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
-        test_size=0.20,
-        stratify=y,
-        random_state=RANDOM_STATE
+        X, y, test_size=0.20, stratify=y, random_state=RANDOM_STATE
     )
 
     # SMOTE on training only — never on test data
@@ -75,7 +71,8 @@ def train_and_evaluate(df_encoded, feature_cols):
     with open(MODEL_PATH, "wb") as f:
         pickle.dump((model, threshold), f)
 
-    return model, threshold, metrics
+    df_test = df_encoded.iloc[X_test.index].copy()
+    return model, threshold, metrics, df_test
 
 
 def load_model():

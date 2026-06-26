@@ -24,8 +24,26 @@ DRIVER_ACTION = {
 }
 
 
+DRIVER_DISPLAY_NAMES = {
+    "Total_Trans_Ct": "Transaction Frequency",
+    "Total_Trans_Amt": "Total Spend Amount",
+    "Total_Revolving_Bal": "Revolving Balance",
+    "Total_Relationship_Count": "Number of Products Held",
+    "Total_Ct_Chng_Q4_Q1": "Transaction Frequency Trend",
+    "Total_Amt_Chng_Q4_Q1": "Spend Amount Trend",
+    "Months_Inactive_12_mon": "Months of Inactivity",
+    "Contacts_Count_12_mon": "Bank Contact Frequency",
+    "Avg_Utilization_Ratio": "Card Utilization Rate",
+    "Credit_Limit": "Credit Limit",
+}
+
+
 def get_action(driver: str) -> str:
     return DRIVER_ACTION.get(driver, "General engagement review")
+
+
+def get_driver_display_name(driver: str) -> str:
+    return DRIVER_DISPLAY_NAMES.get(driver, driver)
 
 
 def generate_briefing(curr_profiles: dict,
@@ -91,14 +109,14 @@ def generate_briefing(curr_profiles: dict,
         f"{crit.get('zero_balance_pct',0):.0%} with zero revolving "
         f"balance ({bal.get('ratio','3.8')}x higher historical churn "
         f"risk vs non-zero balance customers). "
-        f"Primary driver: {top_driver.replace('_',' ')}. "
+        f"Primary driver: {get_driver_display_name(top_driver)}. "
         f"Action: {get_action(top_driver)}.{contact_warning}"
     )
 
     p3 = (
         f"Watch tier: {watch.get('count',0)} customers with early "
         f"warning signals. Primary driver: "
-        f"{watch_driver.replace('_',' ')}. "
+        f"{get_driver_display_name(watch_driver)}. "
         f"Action: {get_action(watch_driver)}. "
         f"Intervene before month 3 of inactivity — churn risk at "
         f"4 months inactive (29.9%) is 7x higher than at 1 month "

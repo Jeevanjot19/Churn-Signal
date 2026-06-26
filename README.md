@@ -24,8 +24,8 @@ Python · XGBoost · SHAP · SMOTE · Streamlit · Plotly
 BankChurners — 10,127 real customers · Kaggle
 
 ## Verified Model Performance
-AUC: 0.9912 · Threshold: 0.678 (F1-optimal) ·
-Precision: 0.950 · Recall: 0.874 · F1: 0.910
+AUC: 0.9914 · Threshold: 0.687 (F1-optimal) ·
+Precision: 0.9529 · Recall: 0.8708 · F1: 0.910
 
 ## Run
 pip install -r requirements.txt

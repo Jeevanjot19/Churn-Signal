@@ -5,9 +5,9 @@ MODEL_PATH      = "models/churn_model.pkl"
 RANDOM_STATE    = 42
 
 # Threshold found experimentally via precision-recall curve
-# F1-optimal on this dataset = 0.678
+# F1-optimal on this dataset = 0.687
 # See src/model.py find_optimal_threshold() for how this was found
-CHURN_THRESHOLD = 0.678
+CHURN_THRESHOLD = 0.687
 
 WEEK_LABEL      = "2024-W49"
 PREV_WEEK_LABEL = "2024-W48"
