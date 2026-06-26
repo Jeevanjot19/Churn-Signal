@@ -31,9 +31,7 @@ their card. ChurnSignal identifies which customers are at risk - and
 more importantly, *why* they're pulling back - so the retention team
 knows exactly what to do.
 
-**Dataset:** 10,127 real credit card customers (BankChurners)<br>
-**Model:** XGBoost · AUC 0.991 · Threshold found experimentally<br>
-**Key finding:** Every customer who contacted the bank 6 times churned.
+**Run pipeline to show analysis** 
 """)
 
 with st.sidebar:
@@ -64,14 +62,14 @@ if run:
                 model, threshold, metrics, _ = train_and_evaluate(
                     df_enc, feat_cols)
 
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("### Model Metrics")
-        st.sidebar.markdown(f"AUC: **{metrics['auc']}**")
-        st.sidebar.markdown(
-            f"Threshold: **{metrics['threshold']}** (F1-optimal)")
-        st.sidebar.markdown(f"Precision: **{metrics['precision']}**")
-        st.sidebar.markdown(f"Recall: **{metrics['recall']}**")
-        st.sidebar.markdown(f"F1: **{metrics['f1']}**")
+        # st.sidebar.markdown("---")
+        # st.sidebar.markdown("### Model Metrics")
+        # st.sidebar.markdown(f"AUC: **{metrics['auc']}**")
+        # st.sidebar.markdown(
+        #     f"Threshold: **{metrics['threshold']}** (F1-optimal)")
+        # st.sidebar.markdown(f"Precision: **{metrics['precision']}**")
+        # st.sidebar.markdown(f"Recall: **{metrics['recall']}**")
+        # st.sidebar.markdown(f"F1: **{metrics['f1']}**")
 
     with st.spinner("Scoring and analysing..."):
         curr_scored = score_customers(
